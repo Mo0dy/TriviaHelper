@@ -1,9 +1,10 @@
 import numpy as np
 import cv2 as cv
+import TriviaHelper.ImageRec.Settings as Settings
 
 # settings
 # the threshold for the boolean image (i.e. color to black / white) difficult because of AA-Characters
-threshold = 120
+
 
 # the path for a test image
 path = 'TestImage.png'
@@ -12,12 +13,12 @@ path = 'TestImage.png'
 # this function splits the image (plain text) into chars (flattened) and returns some extra information i.e.
 # the coordinates of the chars etc.
 # if debug=True it will generate windows that show the process
-def split_img(img, debug):
+def split_to_chars(img, debug):
     if debug:
         cv.imshow('beginning', img)
 
     # Thresholding (Color -> black and white)
-    ret, img = cv.threshold(img, threshold, 255, cv.THRESH_BINARY_INV)
+    ret, img = cv.threshold(img, Settings.threshold, 255, cv.THRESH_BINARY_INV)
 
     # find index of lines beginnings
     # 1d array that is true if there is any white pixel on the row (this will build up stripes for character rows)
@@ -83,13 +84,13 @@ def split_img(img, debug):
     # add padding to the chars (if uneven amount of padding add one more column to the right)
     for i in range(len(chars)):
         c = chars[i]
-        padding_size = 35 - c.shape[1]
+        padding_size = Settings.char_shape[1] - c.shape[1]
         half_size = int(np.floor(padding_size / 2))
-        padding = np.zeros((25, half_size))
+        padding = np.zeros((Settings.char_shape[0], half_size))
         chars[i] = np.hstack((padding, c, padding))
         # check for uneven padding
         if padding_size % 2:
-            chars[i] = np.hstack((chars[i], np.zeros((25, 1))))
+            chars[i] = np.hstack((chars[i], np.zeros((Settings.char_shape[0], 1))))
 
     if debug:
         cv.imshow("all_chars", np.vstack(chars))
@@ -97,7 +98,7 @@ def split_img(img, debug):
         cv.destroyAllWindows()
 
     # flatten it into a single row of 35 * 25 pixels and combine to one array of shape n x 35 * 25
-    result = np.vstack([c.reshape(35 * 25) for c in chars])
+    result = np.vstack([c.reshape(Settings.char_shape[0] * Settings.char_shape[1]) for c in chars])
     print("converted " + str(result.shape[0]) + " characters")
 
     return result, img, lines, charpos
@@ -105,7 +106,7 @@ def split_img(img, debug):
 
 def prep_img(img, debug=False):
     # this will later return multiple images for the answers / question for now it calls the split function with the question image
-    return split_img(img[530:650, 600:1140], debug)
+    return split_to_chars(img[530:650, 600:1140], debug)
 
 
 if __name__ == "__main__":

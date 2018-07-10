@@ -1,6 +1,7 @@
 import numpy as np
 import cv2 as cv
 from TriviaHelper.ImageRec.imgprep import prep_img
+import TriviaHelper.ImageRec.Settings as Settings
 
 # this module takes an image and queries the user for the correct interpretation. This will generate Training data it will later learn from
 
@@ -11,7 +12,7 @@ font = cv.FONT_HERSHEY_SIMPLEX
 path_labels = r'TrainingData\labels.txt'
 path_data = r'TrainingData\data.npy'
 
-
+# UTILITY =======================================================================================
 # this loads the training data
 def load_train_data():
     # exeptions in chase this is the first time data gets entered
@@ -22,8 +23,9 @@ def load_train_data():
         images = None
     # labels get converted to lists because it is easier to append more information
     try:
-        labels = np.loadtxt(path_data)
-        labels = [labels[:, i] for i in range(labels.shape[1])]
+        labels = np.loadtxt(path_labels)
+        print(labels.shape)
+        labels = [labels[i] for i in range(labels.shape[0])]
     except:
         labels = []
 
@@ -60,6 +62,63 @@ def display_curr_text(characters, window_name, window_size):
     cv.imshow(window_name, img)
 
 
+# this function will view the currently generated training data. i.e. the cars and the associated lables
+def view_training_data():
+    padding_size = 10
+    view_size = 1000 # the height that gets viewed
+    view_pos = 0
+    scrollspeed = 100
+
+    # load data
+    images, lables = load_train_data()
+
+    # generate character image
+    # make character images out of the flattened chars + padding
+    char_images = [np.vstack((images[i].reshape(Settings.char_shape), np.zeros((padding_size, Settings.char_shape[1])))) for i in range(images.shape[0])]
+    # the image of all chars stacked on top of each other
+    char_images = np.vstack(char_images).astype(np.uint8)
+
+    # generate interpreted text
+    generated_text = []
+    text_shape = Settings.char_shape[0] + padding_size, Settings.char_shape[1]
+    for l in lables:
+        lable_image = np.zeros(text_shape)
+        cv.putText(lable_image, chr(int(l)), (5, text_shape[1] - 13), font, 1, 200, 2, cv.LINE_AA)
+        generated_text.append(lable_image)
+
+    stacked_lables = np.vstack(generated_text)
+
+    # combine images and add padding
+    half_horizontal_padding = 5
+    view_img = np.hstack((char_images, np.zeros((char_images.shape[0], half_horizontal_padding)), np.ones((char_images.shape[0], 2)) * 100, np.zeros((char_images.shape[0], half_horizontal_padding)), stacked_lables)).astype(np.uint8)
+    # add seperation lines
+    for i in range(len(generated_text) - 1):
+        cv.line(view_img, (0, (i + 1) * text_shape[0] - 5), (view_img.shape[1], (i + 1) * text_shape[0] - 5), 100, 2)
+
+    while True:
+        # calculate view image
+        if view_pos < 0:
+            view_pos = 0
+        elif view_pos > view_img.shape[0] - view_size / 2:
+            view_pos = int(view_img.shape[0] - view_size / 2)
+        end = view_pos + view_size
+        if end >= view_img.shape[0]:
+            end = view_img.shape[0] - 1
+
+        cv.imshow('training Data', view_img[view_pos:end, :])
+        k = cv.waitKey(0)
+        if k == 119: # w for up
+            view_pos -= scrollspeed
+        elif k == 115: # s for down
+            view_pos += scrollspeed
+        elif k == 27: # esc. for quit
+            print(quit)
+            break
+
+    cv.destroyWindow('training Data')
+
+
+# ALGORITHMS =======================================================================================
 # generates training data from an image
 def train_on_img(img):
     # passes image to the image prep. this will return the data (flattened characters) and the positions of the characters for input feedback (red box)
@@ -119,7 +178,10 @@ def train_on_img(img):
 
     # save data at the end
     save_train_data(prepped_data, train_labels)
+    # close windows
+    cv.destroyAllWindows()
 
 
 if __name__ == '__main__':
     train_on_img(cv.imread('TestImage.png', cv.IMREAD_GRAYSCALE))
+    view_training_data()
