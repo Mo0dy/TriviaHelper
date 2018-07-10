@@ -1,6 +1,7 @@
 import numpy as np
 import cv2 as cv
 import TriviaHelper.ImageRec.Settings as Settings
+import time
 
 # settings
 # the threshold for the boolean image (i.e. color to black / white) difficult because of AA-Characters
@@ -13,12 +14,38 @@ path = 'TestImage.png'
 # this function splits the image (plain text) into chars (flattened) and returns some extra information i.e.
 # the coordinates of the chars etc.
 # if debug=True it will generate windows that show the process
-def split_to_chars(img, debug):
+def split_to_chars(img, debug=False, threshold=Settings.threshold):
+    img = img.astype(np.uint8)
     if debug:
         cv.imshow('beginning', img)
 
     # Thresholding (Color -> black and white)
-    ret, img = cv.threshold(img, Settings.threshold, 255, cv.THRESH_BINARY_INV)
+    ret, nimg = cv.threshold(img, threshold, 255, cv.THRESH_BINARY_INV)
+
+    while np.sum(nimg) < 150:
+        if debug:
+            cv.imshow('thresholding', nimg)
+            cv.imshow('orig', img)
+            print("thresholding gone wrong? would you like to try it with a lowe threshold? Yes [y] or No [n]")
+            time.sleep(0.2)
+            k = cv.waitKey(0)
+        else:
+            # autoadjust
+            k = 121
+        if k == 121: # y
+            threshold += 65
+            ret, nimg = cv.threshold(img, threshold, 255, cv.THRESH_BINARY_INV)
+            cv.destroyAllWindows()
+
+        elif k == 110: #n
+            print("Failed")
+            cv.destroyAllWindows()
+            return
+
+    print("threshold:" + str(threshold))
+
+    # img can now be nimg because thresholding worked
+    img = nimg
 
     # find index of lines beginnings
     # 1d array that is true if there is any white pixel on the row (this will build up stripes for character rows)
@@ -50,9 +77,24 @@ def split_to_chars(img, debug):
 
     # create images that contain one row each
     img_lines = [img[l[0]:l[1], :] for l in lines]
+
+    # add padding to rows
+    for i in range(len(img_lines)):
+        l = img_lines[i]
+
+        # horizontal
+        padding_size = Settings.char_shape[0] - l.shape[0]
+        half_size = int(np.floor(padding_size / 2))
+        padding = np.zeros((half_size, l.shape[1]))
+        img_lines[i] = np.vstack((padding, l, padding))
+        # check for uneven padding
+        if padding_size % 2:
+            img_lines[i] = np.vstack((img_lines[i], np.zeros((1, l.shape[1]))))
+
     if debug:
         for i in range(len(img_lines)):
             cv.imshow(str(i), img_lines[i])
+
 
     # repeat the algorithm for every row (split chars)
     chars = []
@@ -84,6 +126,8 @@ def split_to_chars(img, debug):
     # add padding to the chars (if uneven amount of padding add one more column to the right)
     for i in range(len(chars)):
         c = chars[i]
+
+        # horizontal
         padding_size = Settings.char_shape[1] - c.shape[1]
         half_size = int(np.floor(padding_size / 2))
         padding = np.zeros((Settings.char_shape[0], half_size))
@@ -104,9 +148,17 @@ def split_to_chars(img, debug):
     return result, img, lines, charpos
 
 
-def prep_img(img, debug=False):
-    # this will later return multiple images for the answers / question for now it calls the split function with the question image
-    return split_to_chars(img[530:650, 600:1140], debug)
+# get one image and split it into areas
+def prep_img(img, areas):
+    # check if grayscale
+    if len(img.shape) != 2:
+        print("wrong shape! Grayscale?")
+        return
+
+    images = []
+    for a in areas:
+        images.append(img[a[0]:a[2], a[1]:a[3]].copy())
+    return images
 
 
 if __name__ == "__main__":
