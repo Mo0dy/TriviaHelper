@@ -6,20 +6,22 @@ import cv2 as cv
 import numpy as np
 
 
-# gets an opencv image (np array) and returns a question object
-def image_rec(img):
+knn = None
+
+
+def train_knn():
+    global knn
     # train knn
     images, lables = load_train_data()
     train_lables = np.array(lables)
     train_lables.reshape((train_lables.shape[0], 1))
 
-    print(images.shape)
-    print(train_lables.shape)
-
     knn = cv.ml.KNearest_create()
     knn.train(images.astype(np.float32), cv.ml.ROW_SAMPLE, train_lables.astype(np.float32))
 
 
+# gets an opencv image (np array) and returns a question object
+def image_rec(img):
     # analyze image
     split_images = imprep.prep_img(img, youtube_areas)
 

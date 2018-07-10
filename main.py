@@ -10,6 +10,10 @@ import numpy as np
 # create the image
 img = None
 
+
+ImageRec.train_knn()
+
+
 # create a window to listen to keys
 cv.imshow('test_window', np.ones((300, 300)).astype(np.uint8) * 100)
 while True:
