@@ -22,6 +22,6 @@ while True:
         break
 
     quest = ImageRec.image_rec(img)
-# answer = SearchAlg.search_alg(quest)
-# print(answer)
+    answer = SearchAlg.search_alg(quest)
+    print(answer)
 
