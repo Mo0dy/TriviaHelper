@@ -181,9 +181,15 @@ def view_training_data():
     # convert the lable text to one string
     all_lables = [''.join(chr(int(l))) for l in lables]
 
+    # the size of the square that will be viewed
+    vs_x = square_x - padding_size
+    vs_y = square_y - half_horizontal_padding * 2 - 1
+
+    info_window_size = 200, 700
+
     # this function gets called on mouse events and will allow the use to do actions with the mouse
     def mouse_callback(event, x, y, flags, param):
-        nonlocal view_pos, update_pos
+        nonlocal view_pos, update_pos, display_image
         if event == cv.EVENT_LBUTTONUP:
             update_pos = False
         elif update_pos:
@@ -198,15 +204,66 @@ def view_training_data():
 
                 # calculate index of current character
                 index = curr_x_square * chars_per_row + curr_y_square
-                print(all_lables[index])
 
+                # the beginning and end coordinates of the current square
+                selected_img_pos = [curr_x_square * square_x + padding_size, curr_y_square * square_y, (curr_x_square + 1) * square_x, (curr_y_square + 1) * square_y - half_horizontal_padding * 2 - 1]
+                selected_img = display_image[selected_img_pos[1]:selected_img_pos[3], selected_img_pos[0]:selected_img_pos[2], 0]
+                print(all_lables[index])
                 print(curr_x_square, curr_y_square)
+
+                dimg = np.ones(info_window_size).astype(np.uint8) * 50
+                cv.putText(dimg, 'what do you want to do? Selected: ', (10, 50), font, 1, (255, 255, 255), 1, cv.LINE_AA)
+                print(square_x)
+                print(dimg.shape)
+                dimg[20:20+vs_y, 580:580+vs_x] = selected_img
+                cv.putText(dimg, 'modify [m], remove[r], return[esc]', (10, 120), font, 1, (255, 255, 255), 1, cv.LINE_AA)
+                cv.imshow('options', dimg)
+                while True:
+                    k = cv.waitKey(0)
+                    if k == 109: # m
+                        dimg = np.ones(info_window_size).astype(np.uint8) * 50
+                        cv.putText(dimg, 'press new button:', (10, 50), font, 1, (255, 255, 255), 1, cv.LINE_AA)
+                        cv.imshow('options', dimg)
+
+                        while True:
+                            k = cv.waitKey(0)
+                            stored_key = k
+                            char = ''.join(chr(k))
+                            dimg = np.ones(info_window_size).astype(np.uint8) * 50
+                            cv.putText(dimg, 'do you want to change: "' + str(all_lables[index]) + '" to: "' + char + '"?', (10, 50), font, 1, (255, 255, 255), 1, cv.LINE_AA)
+                            cv.putText(dimg, 'yes [y], no [n] return [esc]', (10, 120), font, 1, (255, 255, 255),
+                                       1, cv.LINE_AA)
+                            cv.imshow('options', dimg)
+                            k = cv.waitKey(0)
+                            if k == 121: # y
+                                # change stored item and restart program
+                                lables[index] = stored_key
+                                save_train_data(images, lables)
+
+                                # make square white:
+                                middle_x = int((selected_img_pos[0] + selected_img_pos[2]) / 2) + 2
+
+                                display_image[selected_img_pos[1]:selected_img_pos[3], middle_x:selected_img_pos[2]] = 255
+
+                                cv.putText(display_image, chr(int(stored_key)), (middle_x + 7, selected_img_pos[3] - 14), font, 1, (50, 200, 200), 2, cv.LINE_AA)
+                                break
+                            elif k == 110: # n
+                                continue
+                            elif k == 27: # esc
+                                break
+                    elif k == 114: # r
+                        print("functionality not yet supported")
+                        print("r")
+                    elif k != 27: # esc
+                        continue
+                    break
+                cv.destroyWindow('options')
+
         elif event == cv.EVENT_MOUSEWHEEL:
             if flags > 0: # scroll up
                 view_pos -= scrollspeed
             else: # scroll down
                 view_pos += scrollspeed
-
 
     cv.setMouseCallback('training Data', mouse_callback)
 
