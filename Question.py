@@ -12,9 +12,9 @@ class Question(object):
         # a list of the possible answers (strings)
         self.answers = answers
 
-    def show(self):
+    def get_quest_img(self, window_size):
         # the maximum amount of chars per line
-        img = np.ones((600, 600)).astype(np.uint8)
+        img = np.ones(window_size).astype(np.uint8)
         max_char = 30
 
         start = 0
@@ -44,6 +44,6 @@ class Question(object):
             start = 0
             answer_counter += 1
 
-        cv.imshow('question' + self.question[:10], img)
+        return img
 
 

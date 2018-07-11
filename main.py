@@ -11,29 +11,48 @@ import numpy as np
 # create the image
 img = None
 
+# the font for displaying feedback to the user
+font = cv.FONT_HERSHEY_SIMPLEX
+
 # train the knn-Algorithm with the example data
 ImageRec.train_knn()
 
 
-# create a window to listen to keys
-cv.imshow('test_window', np.ones((300, 300)).astype(np.uint8) * 100)
-while True:
-    # indefinitely wait for a key
-    k = cv.waitKey(0)
-    cv.destroyAllWindows()
-    cv.imshow('test_window', np.ones((300, 300)).astype(np.uint8) * 100)
-    if k == Settings.screenshot_key:  # o
-        # take screenshot and save the image (converted to grayscale)
-        img = cv.cvtColor(clipped_screenshot(), cv.COLOR_BGR2GRAY)
-        # display image as example
-        cv.imshow('test_window', img)
-
+def analyze():
+    # take screenshot and save the image (converted to grayscale)
+    img = cv.cvtColor(clipped_screenshot(), cv.COLOR_BGR2GRAY)
+    # display image as example
+    try:
         # use image recognition to construct question object
         quest = ImageRec.image_rec(img)
-        quest.show()
+        q_img = quest.get_quest_img(img.shape)
+        cv.imshow('main_window', np.hstack((img, q_img)))
         # use the search algorithm to find the correct answer
         answer = SearchAlg.search_alg(quest)
         print(answer)
+    except:
+        err_img = np.ones(img.shape).astype(np.uint8) * 50
+        cv.putText(err_img, 'ERROR!', (50, 200), font, 3, 255, 2, cv.LINE_AA)
+        cv.imshow('main_window', np.hstack((img, err_img)))
+
+
+# the callback function
+def mouse_callback(event, x, y, flags, param):
+    if event == cv.EVENT_LBUTTONDOWN:
+        analyze()
+
+
+
+# create a window to listen to keys
+cv.imshow('main_window', np.ones((300, 300)).astype(np.uint8) * 100)
+cv.setMouseCallback('main_window', mouse_callback)
+
+
+while True:
+    # indefinitely wait for a key
+    k = cv.waitKey(0)
+    if k == Settings.screenshot_key:  # o
+        analyze()
     elif k == 27:  # esc
         break
 
