@@ -93,8 +93,8 @@ def display_curr_text(characters, window_name, window_size, wrong_chars):
     cv.imshow(window_name, img)
 
 
-# this function will view the currently generated training data. i.e. the cars and the associated lables
-def view_training_data():
+# this function will view the currently generated training data. i.e. the cars and the associated lables the color is a boolean array of fields that will be colored initially
+def view_training_data(color=None):
     from TriviaHelper.ImageRec.ImageRec import train_knn
 
     padding_size = 10
@@ -209,7 +209,7 @@ def view_training_data():
                                     (row + 1) * square_y - half_horizontal_padding * 2 - 1]
 
                 region = display_image[selected_img_pos[1]:selected_img_pos[3], selected_img_pos[0]:selected_img_pos[2]]
-                mask = np.logical_or(region[:, :, 1] > 150, region[:, :, 0] > 150, region[:, :, 2] > 150)
+                mask = np.logical_or(region[:, :, 1] > 200, region[:, :, 0] > 200, region[:, :, 2] > 200)
                 region[mask, 0] = color[0]
                 region[mask, 1] = color[1]
                 region[mask, 2] = color[2]
@@ -247,16 +247,14 @@ def view_training_data():
                 # the beginning and end coordinates of the current square
                 selected_img_pos = [curr_x_square * square_x + padding_size, curr_y_square * square_y, (curr_x_square + 1) * square_x, (curr_y_square + 1) * square_y - half_horizontal_padding * 2 - 1]
                 selected_img = display_image[selected_img_pos[1]:selected_img_pos[3], selected_img_pos[0]:selected_img_pos[2], 0]
-                print(all_lables[index])
-                print(curr_x_square, curr_y_square)
 
                 dimg = np.ones(info_window_size).astype(np.uint8) * 50
-                cv.putText(dimg, 'what do you want to do? Selected: ', (10, 50), font, 1, (255, 255, 255), 1, cv.LINE_AA)
-                print(square_x)
-                print(dimg.shape)
-                dimg[20:20+vs_y, 580:580+vs_x] = selected_img
-                cv.putText(dimg, 'currently identified as: "' + (chr(results[index])) + '"', (10, 95), font, 1, (255, 255, 255), 1, cv.LINE_AA)
-                cv.putText(dimg, 'modify [m], remove[r], return[esc]', (10, 140), font, 1, (255, 255, 255), 1, cv.LINE_AA)
+                cv.putText(dimg, 'what do you want to do? Selected: ', (10, 40), font, 1, (255, 255, 255), 1, cv.LINE_AA)
+                dimg[10:10+vs_y, 580:580+vs_x] = selected_img
+                cv.putText(dimg, 'currently identified as: "' + (chr(results[index])) + '"', (10, 80), font, 1, (255, 255, 255), 1, cv.LINE_AA)
+                cv.putText(dimg, 'modify [m], remove[r], return[esc]', (10, 120), font, 1, (255, 255, 255), 1, cv.LINE_AA)
+                cv.putText(dimg, 'position: ' + str(index), (10, 160), font, 1,
+                           (255, 255, 255), 1, cv.LINE_AA)
                 cv.imshow('options', dimg)
                 while True:
                     k = cv.waitKey(0)
@@ -311,6 +309,8 @@ def view_training_data():
     cv.setMouseCallback('training Data', mouse_callback)
 
     train_and_analyze()
+    if np.any(color):
+        col_from_bool(color, (0, 100, 200))
 
     while True:
         # calculate view image
@@ -378,7 +378,7 @@ def train_on_img(img, knn, debug=True, threshold=Settings.threshold):
     # the loop will end if we are on the last row / character (i.e. the last character can't be changed)
     while True:
         # display the character that needs to be entered
-        img = color_char(display_image, row_pos[row], char_pos[row][iterator])
+        dimg = color_char(display_image, row_pos[row], char_pos[row][iterator])
 
         # this could only be done once and remembered!
         # color all chars that are interpreted differend:
@@ -393,7 +393,7 @@ def train_on_img(img, knn, debug=True, threshold=Settings.threshold):
                 if i < row or j < iterator:
                     if train_labels[iter] != results[iter]:
                         # thinks the char is wrong
-                        img = color_char(img, row_pos[i], char_pos[i][j], 1)
+                        dimg = color_char(dimg, row_pos[i], char_pos[i][j], 1)
                         wrong_chars[0].append(train_labels[iter])
                         wrong_chars[1].append(results[iter])
                 else:
@@ -401,11 +401,11 @@ def train_on_img(img, knn, debug=True, threshold=Settings.threshold):
                     break
                 iter += 1
 
-        cv.imshow('type_window', img)
+        cv.imshow('type_window', dimg)
         # wait for a key to be pressed (maybe we should add an abort option)
         k = cv.waitKey(0)
         # return has been pressed i.e. delete the last input character
-        if k == 8:
+        if k == 8: # return
             if iterator == 0:
                 # the row before
                 if row == 0:
@@ -427,13 +427,14 @@ def train_on_img(img, knn, debug=True, threshold=Settings.threshold):
             cv.destroyAllWindows()
             while True:
                 cv.imshow('threshold_image', cv.threshold(img, threshold, 255, cv.THRESH_BINARY_INV)[1])
+                print("showing")
                 print("Threshold:" + str(threshold) + "adjust threshold [w] for higher, [s] for lower and [Tab] again to end")
                 k = cv.waitKey(0)
                 if k == 9:
                     # found new threshold redo image
                     cv.destroyAllWindows()
                     # recursive call to self and results get saved function will be left early
-                    train_on_img(img, debug=debug, threshold=threshold)
+                    train_on_img(img, knn, debug=debug, threshold=threshold)
                     return
                 elif k == 119:  # w for up
                     threshold += 10
@@ -506,6 +507,13 @@ def train_on_new_images(debug=False):
 
 if __name__ == '__main__':
     # train_on_img(cv.imread('TestImage.png', cv.IMREAD_GRAYSCALE))
-    # remove_data(-8, -1)
+    # remove_data(3586, -1)
     view_training_data()
-    # train_on_new_images()
+    images, lables = load_train_data('TrainingData\data.npy', 'TrainingData\labels.txt')
+    curr_count = len(lables)
+    train_on_new_images()
+    images, lables = load_train_data('TrainingData\data.npy', 'TrainingData\labels.txt')
+    new_count = len(lables)
+    arr = np.ones(new_count)
+    arr[curr_count:] = 0
+    view_training_data(arr.astype(bool))

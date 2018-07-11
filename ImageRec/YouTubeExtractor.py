@@ -74,7 +74,7 @@ if __name__ == "__main__":
     while True:
         k = cv.waitKey(0)
         print(k)
-        if k == 111:  # o
+        if k == 111 or k == 79:  # o, O
             run_capture()
         elif k == 27:  # esc
             break
