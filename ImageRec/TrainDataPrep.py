@@ -95,6 +95,8 @@ def display_curr_text(characters, window_name, window_size, wrong_chars):
 
 # this function will view the currently generated training data. i.e. the cars and the associated lables
 def view_training_data():
+    from TriviaHelper.ImageRec.ImageRec import train_knn
+
     padding_size = 10
     view_size = 800 # the height that gets viewed
     view_pos = 0
@@ -105,6 +107,7 @@ def view_training_data():
     if not np.any(images):
         print("no data")
         return
+
 
     # generate character image
     # make character images out of the flattened chars + padding
@@ -135,8 +138,8 @@ def view_training_data():
     # stack image in parallel
     rows = 15
     pixles_per_row = view_img.shape[0] / rows
-    chars_per_row = int(np.ceil(pixles_per_row / (Settings.char_shape[0] + padding_size)))
-    max_height = chars_per_row * (Settings.char_shape[0] + padding_size)
+    chars_per_col = int(np.ceil(pixles_per_row / (Settings.char_shape[0] + padding_size)))
+    max_height = chars_per_col * (Settings.char_shape[0] + padding_size)
     width = view_img.shape[1]
     padding_size = 15
     padding = np.ones((max_height, padding_size)).astype(np.uint8) * 30
@@ -187,9 +190,45 @@ def view_training_data():
 
     info_window_size = 200, 700
 
+
+    # color form boolean list
+    # draws AROUND every entry that is in the list with a certain color
+    def col_from_bool(arr, color):
+        nonlocal display_image
+        for i in range(arr.shape[0]):
+            if not arr[i]:
+                # calculate coordinates on the window
+                column = int(i / chars_per_col)
+                row = i - column * chars_per_col
+
+                print(row, column)
+
+                # the whole square
+                selected_img_pos = [column * square_x + padding_size, row * square_y - 2,
+                                    (column + 1) * square_x,
+                                    (row + 1) * square_y - half_horizontal_padding * 2 - 1]
+
+                region = display_image[selected_img_pos[1]:selected_img_pos[3], selected_img_pos[0]:selected_img_pos[2]]
+                mask = np.logical_or(region[:, :, 1] > 150, region[:, :, 0] > 150, region[:, :, 2] > 150)
+                region[mask, 0] = color[0]
+                region[mask, 1] = color[1]
+                region[mask, 2] = color[2]
+
+    # an array containing the information about the analysis
+    correct, results = None, None
+    # trains the knn and analyzes the training data. highlights the entries that might be wrong
+    def train_and_analyze():
+        nonlocal correct, results
+        knn = train_knn(True)
+        ret, results, neighbours, dist = knn.findNearest(images.astype(np.float32), Settings.k_nearest)
+        training_lables = np.array(lables)
+        correct = training_lables == results.reshape(-1)
+        # every wrong one needs to be colored
+        col_from_bool(correct, (200, 150, 50))
+
     # this function gets called on mouse events and will allow the use to do actions with the mouse
     def mouse_callback(event, x, y, flags, param):
-        nonlocal view_pos, update_pos, display_image
+        nonlocal view_pos, update_pos, display_image, correct, results
         if event == cv.EVENT_LBUTTONUP:
             update_pos = False
         elif update_pos:
@@ -203,7 +242,7 @@ def view_training_data():
                 curr_y_square = int((y + view_pos) / square_y)
 
                 # calculate index of current character
-                index = curr_x_square * chars_per_row + curr_y_square
+                index = curr_x_square * chars_per_col + curr_y_square
 
                 # the beginning and end coordinates of the current square
                 selected_img_pos = [curr_x_square * square_x + padding_size, curr_y_square * square_y, (curr_x_square + 1) * square_x, (curr_y_square + 1) * square_y - half_horizontal_padding * 2 - 1]
@@ -216,7 +255,8 @@ def view_training_data():
                 print(square_x)
                 print(dimg.shape)
                 dimg[20:20+vs_y, 580:580+vs_x] = selected_img
-                cv.putText(dimg, 'modify [m], remove[r], return[esc]', (10, 120), font, 1, (255, 255, 255), 1, cv.LINE_AA)
+                cv.putText(dimg, 'currently identified as: "' + (chr(results[index])) + '"', (10, 95), font, 1, (255, 255, 255), 1, cv.LINE_AA)
+                cv.putText(dimg, 'modify [m], remove[r], return[esc]', (10, 140), font, 1, (255, 255, 255), 1, cv.LINE_AA)
                 cv.imshow('options', dimg)
                 while True:
                     k = cv.waitKey(0)
@@ -242,9 +282,12 @@ def view_training_data():
 
                                 # make square white:
                                 middle_x = int((selected_img_pos[0] + selected_img_pos[2]) / 2) + 2
-
                                 display_image[selected_img_pos[1]:selected_img_pos[3], middle_x:selected_img_pos[2]] = 255
 
+                                # make everything white background again
+                                correct[index] = False
+                                col_from_bool(correct, (255, 255, 255))
+                                train_and_analyze()
                                 cv.putText(display_image, chr(int(stored_key)), (middle_x + 7, selected_img_pos[3] - 14), font, 1, (50, 200, 200), 2, cv.LINE_AA)
                                 break
                             elif k == 110: # n
@@ -266,6 +309,8 @@ def view_training_data():
                 view_pos += scrollspeed
 
     cv.setMouseCallback('training Data', mouse_callback)
+
+    train_and_analyze()
 
     while True:
         # calculate view image
