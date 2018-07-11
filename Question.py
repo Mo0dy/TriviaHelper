@@ -1,4 +1,4 @@
-
+# this class stores the information extracted from the Trivia HQ Question
 class Question(object):
     def __init__(self, question=None, answers=None):
         # a string storing the question asked

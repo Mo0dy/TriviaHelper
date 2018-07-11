@@ -1,7 +1,7 @@
 from TriviaHelper.Question import Question
 from TriviaHelper.ImageRec.TrainDataPrep import load_train_data
 import TriviaHelper.ImageRec.imgprep as imprep
-from TriviaHelper.ImageRec.Settings import youtube_areas
+import TriviaHelper.ImageRec.Settings as settings
 import cv2 as cv
 import numpy as np
 
@@ -9,10 +9,13 @@ import numpy as np
 knn = None
 
 
-def train_knn():
+def train_knn(different_paths=False):
     global knn
     # train knn
-    images, lables = load_train_data()
+    if different_paths:
+        images, lables = load_train_data('TrainingData\data.npy', 'TrainingData\labels.txt')
+    else:
+        images, lables = load_train_data()
     train_lables = np.array(lables)
     train_lables.reshape((train_lables.shape[0], 1))
 
@@ -23,7 +26,7 @@ def train_knn():
 # gets an opencv image (np array) and returns a question object
 def image_rec(img):
     # analyze image
-    split_images = imprep.prep_img(img, youtube_areas)
+    split_images = imprep.prep_img(img, settings.youtube_areas)
 
 
     # result, img, lines, charpos will be returned
@@ -31,7 +34,7 @@ def image_rec(img):
     solution = []
 
     for c in split_character_images:
-        ret, results, neighbours, dist = knn.findNearest(c.astype(np.float32), 3)
+        ret, results, neighbours, dist = knn.findNearest(c.astype(np.float32), settings.k_nearest)
         solution.append(''.join(chr(r) for r in results))
 
     print(solution)
@@ -40,5 +43,30 @@ def image_rec(img):
 
 
 if __name__ == "__main__":
-    img = cv.imread('TestImage.png', cv.IMREAD_GRAYSCALE)
-    image_rec(img)
+    iterator = 0
+    train_knn(True)
+    questions = []
+    while True:
+        try:
+            img = cv.imread('Old_Images\\' + str(iterator) + '.png', cv.IMREAD_GRAYSCALE)
+            questions.append(image_rec(img))
+            iterator += 1
+        except:
+            break
+
+    print("done")
+    all = ''
+    for q in questions:
+        all += q.question
+        for a in q.answers:
+            all += a
+
+    images, lables = load_train_data('TrainingData\data.npy', 'TrainingData\labels.txt')
+    correct_question = 0
+    for i in range(len(all)):
+        if all[i] == chr(int(lables[i])):
+            correct_question += 1
+
+    # this percentage only has meaning if tested with a different set of characters!!!
+    print(str(correct_question / len(all) * 100) + '% are correctly identified')
+

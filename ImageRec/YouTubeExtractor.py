@@ -1,16 +1,12 @@
 import numpy as np
 import cv2 as cv
 import os, os.path
+import TriviaHelper.ImageRec.Settings as set
 from PIL import ImageGrab
 
 save_path = r"New_Images"
 
 # the channel: https://www.youtube.com/channel/UCjWzbKvt5F2pA3th5__N9JA
-
-# the begginning end end coordinates around the square with the important information
-beginning = 702, 220
-end = 1222, 700
-
 
 # this will extract images from youtube and store them to be then used to train the algorithm / create training data
 
@@ -30,7 +26,7 @@ def save_image(img, num):
 
 
 def clipped_screenshot():
-    return take_screenshot()[beginning[1]: end[1], beginning[0]: end[0]]
+    return take_screenshot()[set.beginning[1]: set.end[1], set.beginning[0]: set.end[0]]
 
 
 def run_capture():

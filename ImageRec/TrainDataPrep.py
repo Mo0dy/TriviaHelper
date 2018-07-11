@@ -20,9 +20,10 @@ old_image_path = r'Old_Images'
 # areas: the first one ist the question the others the answer they go [p1y, p1x, p2y, p2x]
 youtube_areas = Settings.youtube_areas
 
+
 # UTILITY =======================================================================================
 # this loads the training data
-def load_train_data():
+def load_train_data(path_data=path_data, path_labels=path_labels):
     # exeptions in chase this is the first time data gets entered
     try:
         images = np.load(path_data)
