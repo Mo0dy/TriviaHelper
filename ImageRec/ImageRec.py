@@ -85,6 +85,6 @@ if __name__ == "__main__":
         iterator += 1
         # except:
         #     break
-
+        questions[-1].show()
     for q in questions:
         print(str(q.question) + str(q.answers))

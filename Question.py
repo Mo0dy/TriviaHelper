@@ -1,3 +1,9 @@
+import cv2 as cv
+import numpy as np
+
+# the font for displaying feedback to the user
+font = cv.FONT_HERSHEY_SIMPLEX
+
 # this class stores the information extracted from the Trivia HQ Question
 class Question(object):
     def __init__(self, question=None, answers=None):
@@ -5,5 +11,39 @@ class Question(object):
         self.question = question
         # a list of the possible answers (strings)
         self.answers = answers
+
+    def show(self):
+        # the maximum amount of chars per line
+        img = np.ones((600, 600)).astype(np.uint8)
+        max_char = 30
+
+        start = 0
+        curr_line = 0
+        answer_counter = 0
+        curr_info = self.question + ' '
+        while True:
+            while True:
+                end = start + max_char
+                if end >= len(curr_info):
+                    end = len(curr_info) - 1
+                else:
+                    # find last space
+                    while curr_info[end] != ' ':
+                        end -= 1
+                    end += 1
+
+                cv.putText(img, curr_info[start:end], (10, 60 * curr_line + 50), font, 1, 255, 2, cv.LINE_AA)
+                start = end
+                curr_line += 1
+                if start == len(curr_info) - 1:
+                    break
+            # next answer
+            if answer_counter >= len(self.answers):
+                break
+            curr_info = '> ' + self.answers[answer_counter] + ' '
+            start = 0
+            answer_counter += 1
+
+        cv.imshow('question' + self.question[:10], img)
 
 

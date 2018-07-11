@@ -20,6 +20,8 @@ cv.imshow('test_window', np.ones((300, 300)).astype(np.uint8) * 100)
 while True:
     # indefinitely wait for a key
     k = cv.waitKey(0)
+    cv.destroyAllWindows()
+    cv.imshow('test_window', np.ones((300, 300)).astype(np.uint8) * 100)
     if k == Settings.screenshot_key:  # o
         # take screenshot and save the image (converted to grayscale)
         img = cv.cvtColor(clipped_screenshot(), cv.COLOR_BGR2GRAY)
@@ -28,6 +30,7 @@ while True:
 
         # use image recognition to construct question object
         quest = ImageRec.image_rec(img)
+        quest.show()
         # use the search algorithm to find the correct answer
         answer = SearchAlg.search_alg(quest)
         print(answer)
