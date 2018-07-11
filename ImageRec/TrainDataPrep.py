@@ -201,8 +201,6 @@ def view_training_data(color=None):
                 column = int(i / chars_per_col)
                 row = i - column * chars_per_col
 
-                print(row, column)
-
                 # the whole square
                 selected_img_pos = [column * square_x + padding_size, row * square_y - 2,
                                     (column + 1) * square_x,
