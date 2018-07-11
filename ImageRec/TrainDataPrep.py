@@ -308,5 +308,4 @@ def train_on_new_images(debug=False):
 if __name__ == '__main__':
     # train_on_img(cv.imread('TestImage.png', cv.IMREAD_GRAYSCALE))
     # remove_data(-31 * 23, -1)
-    view_training_data()
     train_on_new_images()
