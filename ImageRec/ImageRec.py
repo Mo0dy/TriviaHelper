@@ -7,9 +7,6 @@ import cv2 as cv
 import numpy as np
 
 
-knn = None
-
-
 # this changes the recognized strings to correct for expected errors i.e ('' -> ")
 def post_process(input_string):
     # fix '' -> "
@@ -18,7 +15,6 @@ def post_process(input_string):
 
 
 def train_knn(different_paths=False):
-    global knn
     # train knn
     if different_paths:
         images, lables = load_train_data('TrainingData\data.npy', 'TrainingData\labels.txt')
@@ -29,10 +25,11 @@ def train_knn(different_paths=False):
 
     knn = cv.ml.KNearest_create()
     knn.train(images.astype(np.float32), cv.ml.ROW_SAMPLE, train_lables.astype(np.float32))
+    return knn
 
 
 # gets an opencv image (np array) and returns a question object
-def image_rec(img):
+def image_rec(knn, img):
     # analyze image
     split_images = imprep.prep_img(img, settings.youtube_areas)
 

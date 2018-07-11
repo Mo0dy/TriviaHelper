@@ -14,4 +14,4 @@ beginning = 702, 220
 end = 1222, 700
 
 # the amount of knearest that will be searched
-k_nearest = 1
+k_nearest = 3

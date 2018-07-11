@@ -165,18 +165,68 @@ def split_to_chars(img, debug=False, threshold=Settings.threshold):
         # current_row += 1
 
     # add padding to the chars (if uneven amount of padding add one more column to the right)
-    for i in range(len(chars)):
+
+    print([c.shape for c in chars])
+
+    i = 0
+    char_len = (len(chars))
+    while i < char_len:
         c = chars[i]
 
         # horizontal
         padding_size = Settings.char_shape[1] - c.shape[1]
+        if padding_size < 0:
+            # the char is too wide so it needs to be manually split into two and inserted correctly
+            cv.imshow('char too wide', c)
+            split = int(np.floor(c.shape[1] / 2))
+            while True:
+                n_img = c.copy()
+                cv.line(n_img, (split, 0), (split, n_img.shape[0]), 255, 1)
+                cv.imshow('char too wide', n_img)
+
+                k = cv.waitKey(0)
+                if k == 13: # enter
+                    # paint split black
+                    cv.line(c, (split, 0), (split, n_img.shape[0]), 0, 1)
+                    # generate second image
+                    n_img = c[:, split:].copy()
+                    # clip first img
+                    chars[i] = c[:, :split]
+                    c = chars[i]
+                    chars.insert(i + 1, n_img)
+                    char_len += 1
+                    padding_size = Settings.char_shape[1] - c.shape[1]
+
+                    # figure out row from 1d index:
+                    row = 0
+                    counter = i
+                    while True:
+                        if counter < len(charpos[row]):
+                            break
+                        counter -= len(charpos[row])
+                        row += 1
+                    # fix char coordinates to account for added char
+                    charpos[row].insert(counter + 1, [charpos[row][counter][0] + split, charpos[row][counter][1]])
+                    charpos[row][counter][1] = charpos[row][counter][0] + split
+
+                    cv.destroyWindow('char too wide')
+                    break
+                elif k == 97: # a
+                    split -= 1
+                    if split < 0:
+                        split = 0
+                elif k == 100: # d
+                    split += 1
+                    if split >= c.shape[1]:
+                        split = c.shape[1] - 1
+
         half_size = int(np.floor(padding_size / 2))
         padding = np.zeros((Settings.char_shape[0], half_size))
         chars[i] = np.hstack((padding, c, padding))
         # check for uneven padding
         if padding_size % 2:
             chars[i] = np.hstack((chars[i], np.zeros((Settings.char_shape[0], 1))))
-
+        i += 1
     if debug:
         cv.imshow("all_chars", np.vstack(chars))
         cv.waitKey(0)

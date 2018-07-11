@@ -43,15 +43,19 @@ def load_train_data(path_data=path_data, path_labels=path_labels):
 
 
 # this function appends the newly generated data to the save files
-def save_train_data(images, labels):
-    np.savetxt(path_labels, labels)
-    # save images
-    np.save(path_data, images)
+def save_train_data(images, labels, local_paths=True):
+    if local_paths:
+        np.savetxt(r'TrainingData\labels.txt', labels)
+        # save images
+        np.save('TrainingData\data.npy', images)
+    else:
+        np.savetxt(path_labels, labels)
+        np.save(path_data, images)
 
 
 def append_new_data(images, lables):
     # first load old data
-    old_images, old_labels = load_train_data()
+    old_images, old_labels = load_train_data('TrainingData\data.npy', 'TrainingData\labels.txt')
     # append and save labels as numpy array
 
     lables_to_save = np.array(old_labels + lables, dtype=np.int)
@@ -64,24 +68,28 @@ def append_new_data(images, lables):
 
 
 # draws the rectangle around the char that needs to be input according to it's row start and end (y) and char start and end (x)
-def draw_rec(img, row, char):
+def color_char(img, row, char, color=2):
     # copy the image so the original one doesnt get changed
     nimg = img.copy()
     # cv.rectangle(nimg, (char[0] - 5, row[0] - 5), (char[1] + 5, row[1] + 5), [0, 0, 255], 2)
     region = nimg[row[0] - 5: row[1] + 10, char[0]: char[1]]
     mask = region[:, :, 1] > 0
     region[:, :, :] = 0
-    region[mask, 2] = 255
+    region[mask, color] = 255
     return nimg
 
 
 # displayes the currently obtained characters on a dedicated window
-def display_curr_text(characters, window_name, window_size):
+def display_curr_text(characters, window_name, window_size, wrong_chars):
     offset = 0
     if len(characters) > 50:
         offset = 15 * (len(characters) - 50)
     img = np.zeros(window_size)
     cv.putText(img, ''.join(chr(c) for c in characters), (10 - offset, 50), font, 1, 255, 2, cv.LINE_AA)
+
+    # display the chars guessed wrong
+    cv.putText(img, 'input:   ' + (''.join(chr(c) + ', ' for c in wrong_chars[0][:])), (10, 130), font, 1, 200, 2, cv.LINE_AA)
+    cv.putText(img, 'guessed: ' + (''.join(chr(c) + ', ' for c in wrong_chars[1][:])), (10, 170), font, 1, 200, 2, cv.LINE_AA)
     cv.imshow(window_name, img)
 
 
@@ -93,7 +101,10 @@ def view_training_data():
     scrollspeed = 100
 
     # load data
-    images, lables = load_train_data()
+    images, lables = load_train_data('TrainingData\data.npy', 'TrainingData\labels.txt')
+    if not np.any(images):
+        print("no data")
+        return
 
     # generate character image
     # make character images out of the flattened chars + padding
@@ -171,15 +182,18 @@ def view_training_data():
 
 
 def remove_data(beginning, end):
-    images, labels = load_train_data()
-    save_train_data(images[beginning:end], labels[beginning:end])
+    images, labels = load_train_data('TrainingData\data.npy', 'TrainingData\labels.txt')
+    images = np.vstack((images[:beginning], images[end:])).copy()
+    del labels[beginning:end]
+    save_train_data(images, labels)
 
 
 # ALGORITHMS =======================================================================================
 # generates training data from an image
-def train_on_img(img, debug=True, threshold=Settings.threshold):
+def train_on_img(img, knn, debug=True, threshold=Settings.threshold):
     # passes image to the image prep. this will return the data (flattened characters) and the positions of the characters for input feedback (red box)
     prepped_data, clipped_img, row_pos, char_pos = split_to_chars(img, debug=debug, threshold=threshold)
+    ret, results, neighbours, dist = knn.findNearest(prepped_data.astype(np.float32), Settings.k_nearest)
 
     # this list will store the obtained labeling
     train_labels = []
@@ -199,12 +213,35 @@ def train_on_img(img, debug=True, threshold=Settings.threshold):
     # draw in the lines:
     for i in range(len(row_pos)):
         for j in range(len(char_pos[i])):
-            cv.line(display_image, (char_pos[i][j][0] + 2, row_pos[i][1] + 5), (char_pos[i][j][1] - 2, row_pos[i][1] + 5), (255, 255, 255), 2)
+            cv.line(display_image, (char_pos[i][j][0] + 2, row_pos[i][1] + 5), (char_pos[i][j][1] - 2, row_pos[i][1] + 5), (200, 200, 50), 2)
 
     # the loop will end if we are on the last row / character (i.e. the last character can't be changed)
     while True:
         # display the character that needs to be entered
-        cv.imshow('type_window', draw_rec(display_image, row_pos[row], char_pos[row][iterator]))
+        img = color_char(display_image, row_pos[row], char_pos[row][iterator])
+
+        # this could only be done once and remembered!
+        # color all chars that are interpreted differend:
+        # wrong chars store the thought char and input char
+        wrong_chars = [[], []]
+        running = True
+        iter = 0
+        for i in range(len(row_pos)):
+            if not running:
+                break
+            for j in range(len(char_pos[i])):
+                if i < row or j < iterator:
+                    if train_labels[iter] != results[iter]:
+                        # thinks the char is wrong
+                        img = color_char(img, row_pos[i], char_pos[i][j], 1)
+                        wrong_chars[0].append(train_labels[iter])
+                        wrong_chars[1].append(results[iter])
+                else:
+                    running = False
+                    break
+                iter += 1
+
+        cv.imshow('type_window', img)
         # wait for a key to be pressed (maybe we should add an abort option)
         k = cv.waitKey(0)
         # return has been pressed i.e. delete the last input character
@@ -223,7 +260,7 @@ def train_on_img(img, debug=True, threshold=Settings.threshold):
                 iterator -= 1
             # remove the last lable added
             del train_labels[-1]
-            display_curr_text(train_labels, 'display_chars', (100, 1000))
+            display_curr_text(train_labels, 'display_chars', (200, 1000), wrong_chars)
             continue
         elif k == 9: # tab for adjusting threshold
             # adjust threshold
@@ -255,7 +292,7 @@ def train_on_img(img, debug=True, threshold=Settings.threshold):
                 print("done")
                 break
         # display the currently entered characters
-        display_curr_text(train_labels, 'display_chars', (100, 1000))
+        display_curr_text(train_labels, 'display_chars', (200, 1000), wrong_chars)
 
     # save data at the end
     append_new_data(prepped_data, train_labels)
@@ -265,6 +302,7 @@ def train_on_img(img, debug=True, threshold=Settings.threshold):
 
 # goes through all images in the New_Images folder. uses them for training and then moves them to a new folder
 def train_on_new_images(debug=False):
+    from TriviaHelper.ImageRec.ImageRec import train_knn
     iterator = 0
     # brute force try all file names
     while True:
@@ -292,7 +330,8 @@ def train_on_new_images(debug=False):
 
         # start training
         for s in split_images:
-            train_on_img(s, debug=False)
+            knn = train_knn(True)
+            train_on_img(s, knn, debug=False)
 
         # preview the current data if wanted
         if debug:
@@ -307,5 +346,6 @@ def train_on_new_images(debug=False):
 
 if __name__ == '__main__':
     # train_on_img(cv.imread('TestImage.png', cv.IMREAD_GRAYSCALE))
-    # remove_data(-31 * 23, -1)
+    # remove_data(-8, -1)
+    view_training_data()
     train_on_new_images()

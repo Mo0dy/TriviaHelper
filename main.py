@@ -15,7 +15,7 @@ img = None
 font = cv.FONT_HERSHEY_SIMPLEX
 
 # train the knn-Algorithm with the example data
-ImageRec.train_knn()
+knn = ImageRec.train_knn()
 
 
 def analyze():
@@ -24,7 +24,7 @@ def analyze():
     # display image as example
     try:
         # use image recognition to construct question object
-        quest = ImageRec.image_rec(img)
+        quest = ImageRec.image_rec(knn, img)
         q_img = quest.get_quest_img(img.shape)
         cv.imshow('main_window', np.hstack((img, q_img)))
         # use the search algorithm to find the correct answer
