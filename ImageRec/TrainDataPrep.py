@@ -154,22 +154,80 @@ def view_training_data():
             rows.append(np.hstack((view_img[beginning:end], padding)))
             beginning += max_height
 
+    # second padding for the scroll bar
+    rows.append(padding)
     rows.append(padding)
 
+
+    # Actual viewing ===================================================================================================
+    rgb_padding = np.stack([padding for i in range(3)], 2)
     view_img = np.hstack(rows).astype(np.uint8)
+    scroll_bar_height = 50
+    inter_height = view_size - scroll_bar_height
+    scroll_max_height = max_height - view_size
+
+    # a copy so that the image can be modified
+    display_image = np.stack([view_img for i in range(3)], 2)
+
+    # calculate square_size for the mouse_listener to figure out the correct square that was pressed
+    square_x = width + padding_size
+    square_y = text_shape[0]
+
+    # gets activated if scrollbar is used
+    update_pos = False
+
+    cv.namedWindow('training Data')
+
+    # convert the lable text to one string
+    all_lables = [''.join(chr(int(l))) for l in lables]
+
+    # this function gets called on mouse events and will allow the use to do actions with the mouse
+    def mouse_callback(event, x, y, flags, param):
+        nonlocal view_pos, update_pos
+        if event == cv.EVENT_LBUTTONUP:
+            update_pos = False
+        elif update_pos:
+            view_pos = int((y / inter_height) * scroll_max_height)
+        elif event == cv.EVENT_LBUTTONDOWN: # cant do rmb if update pos is active
+            # check if in scrollbar if so set scrollbar
+            if x > view_img.shape[1] - padding_size:
+                update_pos = True
+            else:
+                curr_x_square = int(x / square_x)
+                curr_y_square = int((y + view_pos) / square_y)
+
+                # calculate index of current character
+                index = curr_x_square * chars_per_row + curr_y_square
+                print(all_lables[index])
+
+                print(curr_x_square, curr_y_square)
+        elif event == cv.EVENT_MOUSEWHEEL:
+            if flags > 0: # scroll up
+                view_pos -= scrollspeed
+            else: # scroll down
+                view_pos += scrollspeed
+
+
+    cv.setMouseCallback('training Data', mouse_callback)
 
     while True:
         # calculate view image
         if view_pos < 0:
             view_pos = 0
-        elif view_pos > view_img.shape[0] - view_size * 3 / 4:
-            view_pos = int(view_img.shape[0] - view_size * 3 / 4)
+        elif view_pos > view_img.shape[0] - view_size:
+            view_pos = int(view_img.shape[0] - view_size)
         end = view_pos + view_size
         if end >= view_img.shape[0]:
             end = view_img.shape[0] - 1
 
-        cv.imshow('training Data', view_img[view_pos:end, :])
-        k = cv.waitKey(0)
+        # calculate scroll_bar_position (linear interpolation)
+        scroll_height = view_pos + int(view_pos / scroll_max_height * inter_height)
+        display_image[:, -padding_size:] = rgb_padding
+        display_image[scroll_height:scroll_height + scroll_bar_height, -padding_size:] = 200
+
+        cv.imshow('training Data', display_image[view_pos:end, :])
+        # this allows the mouse function to skip the keyboard input
+        k = cv.waitKey(20)
         if k == 119: # w for up
             view_pos -= scrollspeed
         elif k == 115: # s for down
@@ -348,4 +406,4 @@ if __name__ == '__main__':
     # train_on_img(cv.imread('TestImage.png', cv.IMREAD_GRAYSCALE))
     # remove_data(-8, -1)
     view_training_data()
-    train_on_new_images()
+    # train_on_new_images()
