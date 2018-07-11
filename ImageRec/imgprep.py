@@ -166,8 +166,6 @@ def split_to_chars(img, debug=False, threshold=Settings.threshold):
 
     # add padding to the chars (if uneven amount of padding add one more column to the right)
 
-    print([c.shape for c in chars])
-
     i = 0
     char_len = (len(chars))
     while i < char_len:

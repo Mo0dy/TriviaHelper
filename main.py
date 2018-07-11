@@ -42,7 +42,6 @@ def mouse_callback(event, x, y, flags, param):
         analyze()
 
 
-
 # create a window to listen to keys
 cv.imshow('main_window', np.ones((300, 300)).astype(np.uint8) * 100)
 cv.setMouseCallback('main_window', mouse_callback)

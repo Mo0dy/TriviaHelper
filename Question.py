@@ -32,7 +32,7 @@ class Question(object):
                         end -= 1
                     end += 1
 
-                cv.putText(img, curr_info[start:end], (10, 60 * curr_line + 50), font, 1, 255, 2, cv.LINE_AA)
+                cv.putText(img, curr_info[start:end], (10, 40 * curr_line + 50), font, 1, 255, 2, cv.LINE_AA)
                 start = end
                 curr_line += 1
                 if start == len(curr_info) - 1:
