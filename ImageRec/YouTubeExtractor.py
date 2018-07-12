@@ -3,6 +3,7 @@ import cv2 as cv
 import os, os.path
 import TriviaHelper.ImageRec.Settings as set
 from PIL import ImageGrab
+import time
 
 save_path = r"New_Images"
 
@@ -20,8 +21,14 @@ def count_images(path):
     return len([name for name in os.listdir(path)])
 
 
-def take_screenshot():
+def take_screenshot(crop=None):
+    # make screenshot
     printscreen_pil = ImageGrab.grab()
+
+    # cropping before converting is a HUGE tame save (about 1.4 seconds for this crop size)
+    if crop != None:
+        printscreen_pil = printscreen_pil.crop(crop[0] + crop[1])
+
     return np.array(printscreen_pil.getdata(), dtype='uint8').reshape((printscreen_pil.size[1], printscreen_pil.size[0], 3))
 
 
@@ -30,8 +37,8 @@ def save_image(img, num):
 
 
 def clipped_screenshot():
-    return take_screenshot()[set.beginning[1]: set.end[1], set.beginning[0]: set.end[0]]
-
+    # return take_screenshot()[set.beginning[1]: set.end[1], set.beginning[0]: set.end[0]]
+    return take_screenshot((set.beginning, set.end))
 
 curr_images = 0
 

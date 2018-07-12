@@ -3,6 +3,7 @@ from TriviaHelper.ImageRec import ImageRec
 from TriviaHelper.SearchAlg import SearchAlg
 from TriviaHelper.ImageRec.YouTubeExtractor import clipped_screenshot
 from TriviaHelper import Settings
+import time
 import cv2 as cv
 import numpy as np
 
