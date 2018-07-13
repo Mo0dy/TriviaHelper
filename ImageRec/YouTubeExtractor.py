@@ -24,7 +24,6 @@ def count_images(path):
 def take_screenshot(crop=None):
     # make screenshot
     printscreen_pil = ImageGrab.grab()
-
     # cropping before converting is a HUGE tame save (about 1.4 seconds for this crop size)
     if crop != None:
         printscreen_pil = printscreen_pil.crop(crop[0] + crop[1])
