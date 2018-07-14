@@ -19,18 +19,67 @@ font = cv.FONT_HERSHEY_SIMPLEX
 knn = ImageRec.train_knn()
 
 
+states = {
+    'default': 0,
+    'analyzed': 1,
+    'change_answer': 2,
+}
+
+
+state = 0
+m_x, m_y = None, None
+
+
 def analyze():
+    global state
     # take screenshot and save the image (converted to grayscale)
     img = cv.cvtColor(clipped_screenshot(), cv.COLOR_BGR2GRAY)
     # display image as example
     try:
         # use image recognition to construct question object
         quest = ImageRec.image_rec(knn, img)
-        q_img = quest.get_quest_img(img.shape)
+        q_img, answer_fields = quest.get_quest_img(img.shape)
+
+        # debug answer fields
+        # for a in answer_fields:
+        #     q_img[a[1]:a[3], a[0]:a[2]] = 100
+
         cv.imshow('main_window', np.hstack((img, q_img)))
         # use the search algorithm to find the correct answer
         answer = SearchAlg.search_alg(quest)
         print(answer)
+        state = states['analyzed']
+        while state == states['analyzed'] or state == states['change_answer']:
+            k = cv.waitKey(10)
+            if k == 27: # esc
+                state = states['default']
+            elif state == states['change_answer']:
+                # answer fields and the answers in question have the same order
+                for i in range(len(answer_fields)):
+                    a = answer_fields[i]
+                    # check if in box m_x needs to be transformed to the right
+                    if a[0] < (m_x - img.shape[1]) < a[2] and a[1] < m_y < a[3]:
+                        cv.namedWindow('new_answer')
+                        text_img = np.zeros((100, 500)).astype(np.uint8)
+                        new_answer = ''
+                        while True:
+                            k = cv.waitKey(0)
+                            if k == 13: #enter
+                                break
+                            elif k == 8: # return
+                                new_answer = new_answer[:-1]
+                            else:
+                                new_answer += chr(k)
+                            text_img[:, :] = 0
+                            cv.putText(text_img, new_answer, (10, 50), font, 1, 255)
+                            cv.imshow('new_answer', text_img)
+                        cv.destroyWindow('new_answer')
+                        quest.answers[i] = new_answer
+                        answer = SearchAlg.search_alg(quest)
+                        print("new answer: " + answer)
+                        break
+                state = states['analyzed']
+        cv.imshow('main_window', np.ones((300, 300)).astype(np.uint8) * 100)
     except:
         err_img = np.ones(img.shape).astype(np.uint8) * 50
         cv.putText(err_img, 'ERROR!', (50, 200), font, 3, 255, 2, cv.LINE_AA)
@@ -39,8 +88,14 @@ def analyze():
 
 # the callback function
 def mouse_callback(event, x, y, flags, param):
+    global state, m_x, m_y
     if event == cv.EVENT_LBUTTONDOWN:
-        analyze()
+        if state == states['default']:
+            analyze()
+        elif state == states['analyzed']:
+            state = states['change_answer']
+            m_x, m_y = x, y
+
 
 
 # create a window to listen to keys

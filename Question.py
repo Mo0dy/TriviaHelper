@@ -21,6 +21,12 @@ class Question(object):
         curr_line = 0
         answer_counter = 0
         curr_info = self.question + ' '
+
+        # the regions in which the answers are displayed each one: [x1, y1, x2, y2]
+        answer_fields = []
+
+        start_line = 0
+
         while True:
             while True:
                 end = start + max_char
@@ -37,13 +43,18 @@ class Question(object):
                 curr_line += 1
                 if start == len(curr_info) - 1:
                     break
+            # not the first time this is running
+            if start_line:
+                answer_fields.append([10, start_line * 40 + 25, window_size[1], curr_line * 40 + 20])
+
             # next answer
             if answer_counter >= len(self.answers):
                 break
             curr_info = '> ' + self.answers[answer_counter] + ' '
+            start_line = curr_line
             start = 0
             answer_counter += 1
 
-        return img
+        return img, answer_fields
 
 
