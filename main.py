@@ -44,9 +44,10 @@ def analyze():
         # for a in answer_fields:
         #     q_img[a[1]:a[3], a[0]:a[2]] = 100
 
-        cv.imshow('main_window', np.hstack((img, q_img)))
         # use the search algorithm to find the correct answer
         answer = SearchAlg.search_alg(quest)
+        cv.putText(q_img, "A: " + answer, (10, img.shape[0] - 70), font, 2, 255, 2)
+        cv.imshow('main_window', np.hstack((img, q_img)))
         print(answer)
         state = states['analyzed']
         while state == states['analyzed'] or state == states['change_answer']:
@@ -76,6 +77,9 @@ def analyze():
                         cv.destroyWindow('new_answer')
                         quest.answers[i] = new_answer
                         answer = SearchAlg.search_alg(quest)
+                        q_img, answer_fields = quest.get_quest_img(img.shape)
+                        cv.putText(q_img, "A: " + answer, (10, img.shape[0] - 70), font, 2, 255, 2)
+                        cv.imshow('main_window', np.hstack((img, q_img)))
                         print("new answer: " + answer)
                         break
                 state = states['analyzed']

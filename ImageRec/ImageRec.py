@@ -64,7 +64,7 @@ def image_rec(knn, img):
                     if dist > 6:
                         string += ' '
 
-        solution.append(string)
+        solution.append(post_process(string))
 
     print(solution)
 
